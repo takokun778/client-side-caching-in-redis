@@ -6,9 +6,23 @@
 
 # はじめに
 
+以前「KVSとしてのRedisに入門しgo-redisとrueidisから触ってみる」という記事を投稿したところ
+
+https://zenn.dev/takokun/articles/a3bdeee4f570f9
+
+https://github.com/redis/rueidis
+
+rueidisの作者さまからコメントをいただきました！
+
+> Hi takokun, thank you for trying rueidis and sharing a detailed comparison with go-redis with us!
+> 
+> I am also encouraging you to try the client-side caching as well which is a killer feature since Redis 6. Hoping that you can get huge benefit from it.
+
+前回の記事ももともとrueidisの`supports client side caching.`という一文がきっかけで記事を書いてみましたが今回の記事でいよいよクライアントサイドキャッシュについて触れてみたいと思います。
+
 # Client-side caching in Redis
 
-そもそもRedisのクライアントキャッシュとはなんでしょうか？
+そもそもRedisのクライアントサイドキャッシュとはなんでしょうか？
 
 Redisの公式ドキュメントに説明が記載されていました。
 
@@ -16,16 +30,16 @@ https://redis.io/docs/manual/client-side-caching/
 
 [Bard](https://bard.google.com/)の力を借りつつ説明します。
 
-クライアントキャッシュはハイパフォーマンスなサービスを実現するために使用する技術です。image.png
+クライアントサイドキャッシュはハイパフォーマンスなサービスを実現するために使用する技術です。image.png
 Redisのキャッシュを利用するのではなく、クライアント（=アプリケーション）のキャッシュを利用します。
 
-クライアントキャッシュを利用することによるメリットは以下の2点です。
+クライアントサイドキャッシュを利用することによるメリットは以下の2点です。
 
 - 非常に小さなレイテンシーでデータの利用
 - Redisへの負荷を軽減
 
-しかしクライアントキャッシュを利用することには問題があります。
-それはクライアントキャッシュをどのように無効化するかということです。
+しかしクライアントサイドキャッシュを利用することには問題があります。
+それはクライアントサイドキャッシュをどのように無効化するかということです。
 アプリケーションによってはTTLを設定することで問題を解決できますが、
 
 ※ TTL...
