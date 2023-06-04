@@ -272,7 +272,7 @@ func TestTest(t *testing.T) {
 	})
 
 	t.Run("クライアントサイドキャッシュを有効にしてからAppAで値を更新してAppBで値を取得する", func(t *testing.T) {
-		t.Skip()
+		// t.Skip()
 
 		client := http.DefaultClient
 

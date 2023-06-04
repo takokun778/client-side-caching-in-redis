@@ -244,13 +244,550 @@ services:
       - ../:/app
 ```
 
+## redis-cli の monitor を利用
+
+https://redis.io/commands/monitor/
+
+redis-cliのmonitorコマンドを利用することでRedisに対する全てのコマンドを監視することができます。
+
+```bash
+127.0.0.1:6379> monitor
+OK
+```
+
 ## クライアントサイドキャッシュの動作確認
+
+```go
+t.Run("クライアントサイドキャッシュが有効であることを確認する", func(t *testing.T) {
+  client := http.DefaultClient
+
+  {
+    url := "http://localhost:8081/set?key=key&val=foo"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)と値(foo)を設定")
+  }
+
+  {
+    url := "http://localhost:8081/get?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8081/get?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  defer func() {
+    url := "http://localhost:8081/del?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+  }()
+})
+```
+
+```shell
+=== RUN   TestTest/クライアントサイドキャッシュが有効であることを確認する
+    test_test.go:29: AppAに対してキー(key)と値(foo)を設定
+    test_test.go:52: AppAに対してキー(key)を指定して値を取得
+    test_test.go:53: val: foo
+    test_test.go:76: AppAに対してキー(key)を指定して値を取得
+    test_test.go:77: val: foo
+    test_test.go:100: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:101: val: foo
+    test_test.go:124: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:125: val: foo
+    test_test.go:148: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:149: val: foo
+```
+
+```shell
+"CLIENT" "TRACKING" "ON" "OPTIN"
+"SET" "key" "foo"
+"GET" "key"
+"GET" "key"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"DEL" "key"
+```
+
+- キャッシュを利用しない場合は`GET`コマンドが2回実行されています。
+- キャッシュを利用する場合は`CLIENT CACHING YES`コマンドが実行され、3回リクエストを送信していますがRedisへのリクエストは1回のみです。
 
 ## 値更新の動作確認
 
+```go
+t.Run("クライアントサイドキャッシュを有効にしてからAppAで値を更新してAppBで値を取得する", func(t *testing.T) {
+  client := http.DefaultClient
+
+  {
+    url := "http://localhost:8081/set?key=key&val=foo"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)と値(foo)を設定")
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8082/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8082/set?key=key&val=bar"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppBに対してキー(key)と値(bar)を設定")
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8082/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  defer func() {
+    url := "http://localhost:8081/del?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+  }()
+})
+```
+
+```shell
+=== RUN   TestTest/クライアントサイドキャッシュを有効にしてからAppAで値を更新してAppBで値を取得する
+    test_test.go:291: AppAに対してキー(key)と値(foo)を設定
+    test_test.go:314: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:315: val: foo
+    test_test.go:338: AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:339: val: foo
+    test_test.go:354: AppBに対してキー(key)と値(bar)を設定
+    test_test.go:377: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:378: val: bar
+    test_test.go:401: AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:402: val: bar
+```
+
+```shell
+"SET" "key" "foo"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"SET" "key" "bar"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"DEL" "key"
+```
+
+- クライアントキャッシュを有効した状態でAppAを用いて値を更新した場合、AppBに対しても最新の値が取得できていることが確認できました。
+
 ## 値削除の動作確認
+
+```go
+t.Run("クライアントキャッシュを有効にしてからAppAで値を削除してAppBで値を取得する", func(t *testing.T) {
+  client := http.DefaultClient
+
+  {
+    url := "http://localhost:8081/set?key=key&val=foo"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)と値(foo)を設定")
+  }
+
+  {
+    url := "http://localhost:8081/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8082/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+
+  {
+    url := "http://localhost:8081/del?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    if _, err := client.Do(req); err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppAに対してキー(key)を指定して値を削除")
+  }
+
+  {
+    url := "http://localhost:8082/get/cache?key=key"
+
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    res, err := client.Do(req)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    defer res.Body.Close()
+
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+      t.Fatal(err)
+    }
+
+    t.Log("AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得")
+    t.Logf("val: %s", string(body))
+  }
+})
+```
+
+```shell
+=== RUN   TestTest/クライアントキャッシュを有効にしてからAppAで値を削除してAppBで値を取得する
+    test_test.go:183: AppAに対してキー(key)と値(foo)を設定
+    test_test.go:206: AppAに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:207: val: foo
+    test_test.go:230: AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:231: val: foo
+    test_test.go:246: AppAに対してキー(key)を指定して値を削除
+    test_test.go:269: AppBに対してクライアントサイドキャッシュ利用のキー(key)を指定して値を取得
+    test_test.go:270: val:
+```
+
+```shell
+"SET" "key" "foo"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"HELLO" "3"
+"CLIENT" "TRACKING" "ON" "OPTIN"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+"DEL" "key"
+"CLIENT" "CACHING" "YES"
+"MULTI"
+"PTTL" "key"
+"GET" "key"
+"EXEC"
+```
+
+- クライアントキャッシュを有効した状態でAppAを用いて値を削除した場合、AppBに対しても値が取得できないことが確認できました。
 
 # おわりに
 
 Redisのクライアントサイドキャッシュの仕様を確認し、rueidisを使って実際に動作確認を行いました。
-今回は説明をしませんでしたがクライアントサイドキャッシュを有効にした場合はRedisとの接続モードには2種類あります。
+今回は特に説明をしていませんがクライアントサイドキャッシュを有効にした場合はRedisとの接続モードに2種類あります。
+
+- `default mode` ... Redis側でどのクライアントへ無効化メッセージを送信するかを決定する。= Redis側のCPU負荷が高くなる。
+- `broadcasting mode` ... Redis側は無効化メッセージを全てのクライアントへ送信する。 = クライアント側のCPU負荷が高くなる。
+
+今回は`default mode`を利用して動作確認を行っています。
+実際に活用する場合には`default mode`と`broadcasting mode`のどちらを利用するかを検討する必要があります。
+
+本記事で紹介した各種コードは以下のリポジトリにも置いておきます。
+
+https://github.com/takokun778/client-side-caching-in-redis

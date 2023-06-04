@@ -8,7 +8,7 @@ down:
 
 .PHONY: cli
 cli:
-	@docker exec -it client-side-caching-in-redis redis-cli
+	@docker exec -it redis redis-cli
 
 .PHONY: a
 a:
