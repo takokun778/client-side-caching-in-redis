@@ -10,10 +10,14 @@ type Client struct {
 	rueidis.Client
 }
 
-func New() *Client {
+func New(url string) *Client {
 	ctx := context.Background()
 
-	cli, err := rueidis.NewClient(rueidis.ClientOption{InitAddress: []string{"127.0.0.1:6379"}})
+	option := rueidis.ClientOption{
+		InitAddress: []string{url},
+	}
+
+	cli, err := rueidis.NewClient(option)
 	if err != nil {
 		panic(err)
 	}

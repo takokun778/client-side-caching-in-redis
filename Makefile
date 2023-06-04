@@ -12,8 +12,13 @@ cli:
 
 .PHONY: a
 a:
-	@go run cmd/a/main.go
+	@curl http://localhost:8081/set?key=key\&val=a
+	@curl http://localhost:8081/get?key=key
 
 .PHONY: b
 b:
-	@go run cmd/b/main.go
+	@curl http://localhost:8082/get?key=key
+
+.PHONY: test
+test:
+	@go test -v ./test/... -count=1

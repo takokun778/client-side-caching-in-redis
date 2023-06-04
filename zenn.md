@@ -1,10 +1,38 @@
+目次
+1. はじめに
+1. そもそもRedisのクライアントサイドキャッシュとは??
+1. rueidisを使った動作確認
+1. おわりに
+
 # はじめに
 
 # Client-side caching in Redis
 
+そもそもRedisのクライアントキャッシュとはなんでしょうか？
+
+Redisの公式ドキュメントに説明が記載されていました。
+
 https://redis.io/docs/manual/client-side-caching/
 
-# DoCache()
+[Bard](https://bard.google.com/)の力を借りつつ説明します。
+
+クライアントキャッシュはハイパフォーマンスなサービスを実現するために使用する技術です。image.png
+Redisのキャッシュを利用するのではなく、クライアント（=アプリケーション）のキャッシュを利用します。
+
+クライアントキャッシュを利用することによるメリットは以下の2点です。
+
+- 非常に小さなレイテンシーでデータの利用
+- Redisへの負荷を軽減
+
+しかしクライアントキャッシュを利用することには問題があります。
+それはクライアントキャッシュをどのように無効化するかということです。
+アプリケーションによってはTTLを設定することで問題を解決できますが、
+
+※ TTL...
+
+# rueidisを使った動作確認
+
+## DoCache() メソッド
 
 ```go
 // DoCache is similar to Do, but it uses opt-in client side caching and requires a client side TTL.
@@ -35,6 +63,5 @@ DoCache(ctx context.Context, cmd Cacheable, ttl time.Duration) (resp RedisResult
 - bで取得
 - aで1秒後に削除
 - bで1秒後にキャッシュから取得
-    -> ないはず
 
 # おわりに
